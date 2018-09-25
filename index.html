@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Tarea 3 - Hurto celulares Bogota 2017</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<script src="https://d3js.org/d3.v5.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="estilo.css">
+</head>
+<body>
+
+	<h1>Hurto de celulares en Bogotá (2017)</h1>	
+	
+	<script>
+
+		d3.json("hurto2017.json").then(function(data){
+
+			const height = 330;
+			const width = 1520;
+		    const margin = {left:210, right:140, top: 30, bottom:20};
+		    const iwidth = width/2 - margin.left - margin.right;
+		    const iheight = height - margin.top - margin.bottom;
+
+			const svg = d3.select(".principal").append("svg")
+				.attr("width",width)
+				.attr("height",height)
+				.attr("transform", `translate(${margin.left},${margin.top})`);
+
+			var cuentaDia = d3.nest()
+				.key(function(d) { return d.dia; })
+			  	.rollup(function(v) { return v.length; })
+			  	.entries(data);
+
+			const x = d3.scaleLinear()
+			    .domain([0, d3.max(cuentaDia, d => d.value)])
+			    .range([0, width-50]);
+
+			const g = svg.append("g")
+    			.attr("transform", `translate(${2},${0})`);
+
+    		g.append("g")
+			    .call(d3.axisBottom(x))
+			    .attr("transform", `translate(0,${iheight})`);
+	
+			const rects = svg.selectAll()
+				.data(cuentaDia.sort( (a,b) => d3.descending(a.value, b.value) ));
+
+			rects.enter()
+			    .append("rect")
+			    .attr("class","bar")
+			    .attr("x", 2)
+			    .attr("y", (d, i) => (i*40))
+			    .attr("width", d => x(d.value))
+			    .attr("height",40)
+			    .style("stroke", "#000000")
+			    .style("fill", "#52BBC9")
+			    .on("mouseover", function (d, i) {
+			    	console.log(d);
+			    	d3.select(this)
+		                .transition()
+		                .duration(300)
+			    		.style("fill", "#306D75");
+
+			    	svg.append("text")
+			    	    .transition()
+		                .duration(900)
+			    		.attr("id", "t1")
+			    		.attr("x", x(d.value)-47)
+			    		.attr("y", (i+.7)*40)
+			    		.text(d.value)
+			    		.style("stroke", "black")
+					    .style("font-size", "20px")
+					    .style("font-family", "Arial");
+
+			    })
+			    .on("mouseout", function (d) {
+			    	console.log(d);
+			    	d3.select(this)
+			    		.transition()
+		                .duration(300)
+			    		.style("fill", "#52BBC9");
+
+			    	d3.select("#t1").remove();
+			    })
+			    .on("click", function (d){
+
+			    	d3.select(".cambio").text('Según la información recolectada, el día ' + d.key + ' se presentaron ' + d.value + ' hurtos para el año 2017 en la ciudad de Bogotá');
+
+			    	var dia = d.key;
+
+			    	d3.select(".armaspordia").text('A continuación se puede observar la proporción del arma utilizada para el día ' + d.key + ' del año 2017 en la ciudad de Bogotá');
+
+			    	const height2 = 900;
+					const width2 = 900;
+				    
+			    	const radius = Math.min(width2, height2) / 3;
+
+			    	const svg2 = d3.select(".secundario").append("svg")
+						.attr("width",width2)
+						.attr("height",height2)
+						.append("g")
+				            .attr("transform", `translate(${500}, ${height2 / 2})`);				            
+
+				    svg2.select("text").remove();
+
+			    	const armaDia = data.filter(d => d.dia == dia);
+
+			    	const color = d3.scaleOrdinal(["#66c2a5","#fc8d62","#8da0cb","#e78ac3","#a6d854","#ffd92f"]);
+
+			    	var cuentaArma = d3.nest()
+						.key(function(d) { return d.Arma; })
+					  	.rollup(function(v) { return v.length; })
+					  	.entries(armaDia);
+
+			    	const pie = d3.pie()
+				        .value(d => d.value)
+				        .sort(null);
+
+				    const arc = d3.arc()
+				        .innerRadius(0)
+				        .outerRadius(radius);
+
+				    const path = svg2.selectAll("path").data(pie(cuentaArma));
+
+				    path.enter().append("path")
+		                .attr("fill", (d, i) => color(i))
+		                .attr("d", arc)
+		                .attr("stroke", "white")
+		                .attr("stroke-width", "6px")
+		                .each(function(d) { this._current = d; });
+
+		            //var cant = d.value;
+		            //const arma = cuentaArma.filter(d => d.value == cant);
+
+		            path.enter().append("text")
+		            	.each(function(d){
+		            		var centroid = arc.centroid(d);
+			            	d3.select(this)
+				            	.attr("transform", function(d) { return "translate(" + centroid[0]*2.5 + ',' + centroid[1]*2.5 + ")"; })
+							    .text(function(d) { return d.value; })
+							    .style("font-size", "12px");
+					    });
+
+			    })
+			
+			const texto = svg.selectAll()
+			    .data(cuentaDia.sort( (a,b) => d3.descending(a.value, b.value) ));
+			  
+			  texto.enter()
+			    .append("text")
+			    .attr("class","label")
+			    .attr("x", d => 10)
+			    .attr("y", (d, i) => ((i+.7)*40))
+			    .text(d => d.key)
+			    .style("stroke", "black")
+			    .style("font-size", "20px")
+			    .style("font-family", "Arial");
+
+		});
+
+	</script>
+	
+	<div>
+		<p>A continuación se muestra la cantidad de celulares que han sido robados y reportados en la ciudad de Bogotá desde el 01 de enero de 2017 hasta el 31 de diciembre de 2017</p>
+	</div>
+	<div>
+		<svg class="principal" width="1520" height="320"></svg>
+	</div>
+	<br/>
+	<div>
+		<p class="cambio">Por favor haga click en alguna de las barras</p>
+	</div>
+	<div>
+		<p class="armaspordia"></p>
+	</div>
+	<div>
+		<svg class="secundario" width="1000" height="1000"></svg>
+	</div>
+</body>
+</html>
